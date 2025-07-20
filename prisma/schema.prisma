@@ -170,6 +170,7 @@ model EventPayment {
   created        DateTime      @default(now())
   modified       DateTime      @updatedAt
   amount         Decimal       @default(0.000000000000000000000000000000)
+  is_registered_athlete Boolean?
   event          Event         @relation(fields: [event_id], references: [id])
 
   @@index([event_id], map: "EventPayment_event_id_fkey")
