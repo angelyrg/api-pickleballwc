@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int     @id @default(autoincrement())
+  first_name String
+  last_name  String
+  email      String  @unique
+  password   String?
+  token      String?
+  is_admin   Boolean @default(false)
+  rol        String  @default("user")
+  member     Member?
+}
+
+model Member {
+  id                Int       @id @default(autoincrement())
+  user_id           Int       @unique
+  birthday          DateTime?
+  phone             String?
+  dupr              Decimal?  @default(0.000000000000000000000000000000)
+  dupr_alphanumeric String?
+  shirt_size        Size?
+  phone_code        String?
+  phone_number      String?
+  passport          String?
+  passport_image    String?
+  country           String?
+  arrival           DateTime?
+  airline           String?
+  flight            String?
+  info_completed    Boolean   @default(false)
+  is_coordinator    Boolean   @default(false)
+  country_code      String?
+  question1         String?   @db.Text
+  question2         String?   @db.Text
+  question3         String?   @db.Text
+  country_en        String?
+  position          String?
+  gender            Gender?
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  players           Player[]
+  supports          Support[]
+  captained         Team[]    @relation("Captain")
+  coached           Team[]    @relation("Coach")
+  coordinated       Team[]    @relation("Coordinator")
+}
+
+model Tournament {
+  id          Int       @id @default(autoincrement())
+  name        String
+  start       DateTime?
+  end         DateTime?
+  age_min     Int?
+  age_max     Int?
+  color       String?
+  players_min Int?
+  players_max Int?
+  dupr_max    Decimal?  @default(0.000000000000000000000000000000)
+  amount      Decimal   @default(0.000000000000000000000000000000)
+  active      Boolean   @default(true)
+  position    Int       @default(1)
+  teams       Team[]
+}
+
+model Team {
+  id             Int        @id @default(autoincrement())
+  country_code   String?
+  coordinator_id Int
+  tournament_id  Int
+  coach_id       Int?
+  captain_id     Int?
+  payment_token  String?
+  status         TeamStatus @default(CREATED)
+  country        String?
+  country_en     String?
+  payments       Payment[]
+  players        Player[]
+  reserve        Reserve?
+  supports       Support[]
+  captain        Member?    @relation("Captain", fields: [captain_id], references: [id])
+  coach          Member?    @relation("Coach", fields: [coach_id], references: [id])
+  coordinator    Member     @relation("Coordinator", fields: [coordinator_id], references: [id], onDelete: Cascade)
+  tournament     Tournament @relation(fields: [tournament_id], references: [id])
+
+  @@index([captain_id], map: "Team_captain_id_fkey")
+  @@index([coach_id], map: "Team_coach_id_fkey")
+  @@index([coordinator_id], map: "Team_coordinator_id_fkey")
+  @@index([tournament_id], map: "Team_tournament_id_fkey")
+}
+
+model Player {
+  id        Int    @id @default(autoincrement())
+  team_id   Int
+  member_id Int
+  member    Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  team      Team   @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, member_id])
+  @@index([member_id], map: "Player_member_id_fkey")
+}
+
+model Support {
+  id        Int    @id @default(autoincrement())
+  team_id   Int
+  member_id Int
+  member    Member @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  team      Team   @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, member_id])
+  @@index([member_id], map: "Support_member_id_fkey")
+}
+
+model Payment {
+  id             Int            @id @default(autoincrement())
+  team_id        Int
+  concept        PaymentConcept
+  amount         Decimal
+  response       String?        @db.Text
+  status         PaymentStatus
+  payment_intent String?
+  team           Team           @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  reserve        Reserve?
+
+  @@index([team_id], map: "Payment_team_id_fkey")
+}
+
+model Reserve {
+  id         Int      @id @default(autoincrement())
+  team_id    Int      @unique
+  payment_id Int      @unique
+  start      DateTime
+  end        DateTime
+  qty        Int
+  payment    Payment  @relation(fields: [payment_id], references: [id], onDelete: Cascade)
+  team       Team     @relation(fields: [team_id], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id          Int            @id @default(autoincrement())
+  name        String
+  code        String         @unique
+  description String?        @db.Text
+  amount      Decimal
+  limit       Int
+  is_active   Boolean        @default(true)
+  position    Int            @default(0)
+  payments    EventPayment[]
+}
+
+model EventPayment {
+  id             Int           @id @default(autoincrement())
+  event_id       Int
+  name           String
+  lastname       String
+  email          String
+  country_code   String
+  country        String
+  phone          String
+  passport       String
+  payment_intent String
+  concept        String
+  status         PaymentStatus
+  created        DateTime      @default(now())
+  modified       DateTime      @updatedAt
+  amount         Decimal       @default(0.000000000000000000000000000000)
+  event          Event         @relation(fields: [event_id], references: [id])
+
+  @@index([event_id], map: "EventPayment_event_id_fkey")
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  timestamp DateTime @default(now())
+  level     String   @default("ERROR") // Nivel del log (puedes añadir INFO, WARN, etc. si lo necesitas)
+  message   String   @db.Text // Mensaje principal del error
+  stack     String?  @db.Text // Stack trace del error
+  path      String? // Ruta del archivo (src/...)
+  function  String? // Nombre de la función/método
+  tags      Json? // Etiquetas (como un array JSON: ["player", "create"])
+  extra     Json? // Datos adicionales (como un objeto JSON)
+
+  @@index([timestamp])
+  @@index([level])
+}
+
+enum Size {
+  S
+  M
+  L
+  XL
+  XXL
+}
+
+enum TeamStatus {
+  CREATED
+  PAID
+}
+
+enum PaymentStatus {
+  APPROVED
+  REJECTED
+  PENDING
+  REFOUND
+}
+
+enum PaymentConcept {
+  RESERVE
+  REGISTER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
